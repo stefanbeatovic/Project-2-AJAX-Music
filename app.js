@@ -27,7 +27,7 @@ searchBtn.addEventListener("click", () => {                // 6) When the button
 
 // Helper: build the correct URL for the chosen project type
 function buildUrl(kind, query) {                           // 1) Receive kind (weather/movies/...) and user query text
-  const trimmed = query.trim();                            // 2) Remove extra spaces again to be safe
+  const trimmed = query.trim();                            // 2) Remove extra spaces again to be safe.
   }
 
   // NOTE: Replace YOUR_KEY_HERE with real keys where needed.

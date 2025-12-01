@@ -16,7 +16,7 @@ body {                                                     /* 1) Style the whole
 .card {                                                    /* 9) Styling for search and results sections */
   background-color: #ffffff;                               /* 10) White background card */
   border: 1px solid #e2e7fb;                               /* 11) Soft light border */
-  border-radius: 12px;                                     /* 12) Rounded corners */
+  border-radius: 12px;                                     /* 12) Rounded corners. */
   padding: 16px;                                           /* 13) Inner padding */
   margin: 12px 0;                                          /* 14) Vertical gap between cards */
 }
