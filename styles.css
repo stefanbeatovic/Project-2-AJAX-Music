@@ -1,0 +1,73 @@
+/* Basic page styling */
+body {                                                     /* 1) Style the whole page background and font */
+  font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; /* 2) Use modern system font stack */
+  margin: 0;                                               /* 3) Remove default browser margins */
+  background-color: #f4f7fb;                               /* 4) Light grey-blue background behind cards */
+}
+
+/* Center content and limit width for readability */
+.wrap {                                                    /* 5) Main container for content */
+  max-width: 960px;                                        /* 6) Do not let lines become too wide */
+  margin: 20px auto;                                       /* 7) Center container horizontally and add top/bottom space */
+  padding: 0 16px;                                         /* 8) Side padding for small screens */
+}
+
+/* Card look for main sections */
+.card {                                                    /* 9) Styling for search and results sections */
+  background-color: #ffffff;                               /* 10) White background card */
+  border: 1px solid #e2e7fb;                               /* 11) Soft light border */
+  border-radius: 12px;                                     /* 12) Rounded corners */
+  padding: 16px;                                           /* 13) Inner padding */
+  margin: 12px 0;                                          /* 14) Vertical gap between cards */
+}
+
+/* Stack labels and inputs */
+label {                                                    /* 15) Label styling for form fields */
+  display: block;                                          /* 16) Make each label occupy full width (block) */
+  margin: 8px 0;                                           /* 17) Vertical spacing between labels */
+}
+
+input,
+select,
+button {                                                   /* 18) Shared styles for inputs, selects and buttons */
+  font: inherit;                                           /* 19) Use same font as body */
+  padding: 8px;                                            /* 20) Inner padding for click or touch comfort */
+  border-radius: 8px;                                      /* 21) Slightly rounded corners */
+  border: 1px solid #ccd3e0;                               /* 22) Soft border colour */
+}
+
+/* Button style */
+button {                                                   /* 23) Additional styles just for buttons */
+  background-color: #019dd5;                               /* 24) Blue background colour */
+  color: #ffffff;                                          /* 25) White text */
+  cursor: pointer;                                         /* 26) Pointer cursor on hover */
+}
+button:hover {                                             /* 27) Hover effect for buttons */
+  background-color: #00a8d6;                               /* 28) Slightly lighter blue on hover for feedback */
+}
+
+/* Grid for result cards */
+.results-grid {                                            /* 29) Container for flexible card layout */
+  display: grid;                                           /* 30) Use CSS Grid layout */
+  gap: 12px;                                               /* 31) Space between grid items */
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* 32) Auto-fit responsive columns */
+}
+
+/* Individual result card */
+.result-card {                                             /* 33) Style for each result card */
+  border: 1px solid #e2e7fb;                               /* 34) Thin border matching the main card style */
+  border-radius: 10px;                                     /* 35) Rounded corners for card */
+  padding: 10px 12px;                                      /* 36) Inner padding for content */
+  background-color: #f7faff;                               /* 37) Slightly tinted background for separation */
+}
+
+.result-card h3 {                                          /* 38) Title inside card */
+  margin-top: 0;                                           /* 39) Remove default margin above */
+  margin-bottom: 6px;                                      /* 40) Small gap below the heading */
+  font-size: 1.05em;                                       /* 41) Slightly larger than normal text */
+}
+
+.result-card .muted {                                      /* 42) Extra information text */
+  color: #4b5563;                                          /* 43) Muted grey colour */
+  font-size: 0.95em;                                       /* 44) Slightly smaller font size */
+}
