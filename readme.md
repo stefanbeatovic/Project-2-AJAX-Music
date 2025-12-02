@@ -6,7 +6,7 @@ A single-page music information app using Last.fm API
 
 Project-2-AJAX-Music is a lightweight single-page web application built for a school assignment.
 
-I have been introduced with Last-fm almost 20 years ago. This was one of the biggest reasons I decided to make a mucis app. And on top of that, I really love music. Listen it every day, even while doing this assignments. 
+I have been introduced with Last.fm almost 20 years ago. This was one of the biggest reasons I decided to make a mucis app. And on top of that, I really love music. Listen it every day, even while doing this assignments. 
 
 The app uses JavaScript’s fetch() API to load live music data from Last.fm, including:
 
