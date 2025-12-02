@@ -66,6 +66,7 @@ Project-2-AJAX-Music/
 ├── index.html      → UI layout + search interface
 ├── styles.css      → Custom responsive styling
 ├── app.js          → AJAX logic + API integration
+├── .gitignore      → gitignore file
 └── README.md       → Documentation
 ```
 
@@ -126,10 +127,10 @@ https://ws.audioscrobbler.com/2.0/?method=...&api_key=YOUR_KEY&format=json
 
 API key is embedded client-side (public), because:
 
-- ✔️ Last.fm API is designed for client-side use
-- ✔️ No sensitive data is exposed
-- ✔️ No POST requests or write operations
-- ✔️ No user accounts or tokens required
+- Last.fm API is designed for client-side use
+- No sensitive data is exposed
+- No POST requests or write operations
+- No user accounts or tokens required
 
 ## ❌ Why Render is not being used (Backend)
 
