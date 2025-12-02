@@ -9,42 +9,62 @@
 <body>
   <header class="site-header">
     <div class="wrap header-inner">
-      <h1>AJAX Music Search</h1>
-      <p class="sub">Search artists, tracks and albums using the Last.fm API — click items for details.</p>
+      <h1>Music app - Dynamic Web Applications with Javascript TO00BL10-3028 / Project-2-AJAX</h1>
+      <p class="sub">Search artists, tracks, albums or genres — browse top charts and open detailed views.</p>
     </div>
   </header>
 
   <main class="wrap main-content">
     <section class="card search-card" aria-label="Search music">
       <div class="search-row">
-        <input id="searchInput" type="search" placeholder="Search for an artist, track or album (e.g. Adele, Rolling in the Deep, 25)" />
+        <input id="searchInput" type="search" placeholder="Search for an artist, track, album or genre" />
+        <select id="searchType" aria-label="Search type">
+          <option value="all">All</option>
+          <option value="artist">Artist</option>
+          <option value="track">Track</option>
+          <option value="album">Album</option>
+          <option value="genre">Genre</option>
+        </select>
         <button id="searchBtn" class="btn-primary">Search</button>
       </div>
 
       <div class="search-options">
-        <label><input type="radio" name="searchType" value="all" checked /> All</label>
-        <label><input type="radio" name="searchType" value="artist" /> Artist</label>
-        <label><input type="radio" name="searchType" value="track" /> Track</label>
-        <label><input type="radio" name="searchType" value="album" /> Album</label>
+        <small>Tip: try "Eminem", "Bohemian Rhapsody", "rock", or "Abbey Road".</small>
       </div>
 
       <p id="status" class="status" aria-live="polite"></p>
     </section>
 
+    <!-- TOP CHARTS -->
+    <section class="charts-grid">
+      <div class="card chart-card">
+        <h2>Top 10 Artists (Global)</h2>
+        <ol id="topArtists" class="chart-list"></ol>
+      </div>
+
+      <div class="card chart-card">
+        <h2>Top 10 Tracks (Global)</h2>
+        <ol id="topTracks" class="chart-list"></ol>
+      </div>
+    </section>
+
+    <!-- SEARCH RESULTS -->
     <section id="results" class="results-grid" aria-label="Search results">
       <!-- Cards injected here -->
     </section>
 
-    <!-- DETAILS PANEL (hidden until used) -->
-    <aside id="detailsPanel" class="card details-panel" aria-hidden="true">
-      <button id="closeDetails" class="close-btn" title="Close details">✕</button>
-      <div id="detailsContent"><!-- filled dynamically --></div>
-    </aside>
+    <!-- DETAILS MODAL / PANEL -->
+    <div id="detailsOverlay" class="details-overlay" aria-hidden="true">
+      <div class="details-modal" role="dialog" aria-modal="true" aria-labelledby="detailsTitle">
+        <button id="closeDetails" class="close-btn" title="Close details">✕</button>
+        <div id="detailsContent" class="details-content"></div>
+      </div>
+    </div>
   </main>
 
   <footer class="site-footer">
     <div class="wrap">
-      <small>Project-2-AJAX-Music — using Last.fm API</small>
+      <small>Project-2-AJAX-Music — powered by Last.fm API</small>
     </div>
   </footer>
 

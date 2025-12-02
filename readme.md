@@ -1,84 +1,174 @@
-# Project-2-AJAX-Music
+# 🎵 Project-2-AJAX-Music
 
-Simple Last.fm-based music search app. I have been introduced with Last-fm almost 20 years ago. This was one of the biggest reasons I decided to make a mucis app. And on top of that, I really love music. Listen it every day, even while doing this assignments. 
+A single-page music information app using Last.fm API
 
-Search artists, tracks and albums and open detail panels for additional artist/track/album info.
+## 📌 Overview
 
-## Quick start
+Project-2-AJAX-Music is a lightweight single-page web application built for a school assignment.
 
-1. Open ```index.html``` in your browser (no build step).
-2. Type an artist, track or album into the search field and press "Search".
-3. Click result cards or buttons to open details in the side panel.
+I have been introduced with Last-fm almost 20 years ago. This was one of the biggest reasons I decided to make a mucis app. And on top of that, I really love music. Listen it every day, even while doing this assignments. 
 
-## Features
+The app uses JavaScript’s fetch() API to load live music data from Last.fm, including:
 
-- Multi-result search (artist / track / album).
-- Detail views via Last.fm endpoints (artist.getInfo, track.getInfo, album.getInfo).
-- Top tracks, top albums and similar artists for an artist.
-- Graceful handling of missing fields and loading / error messages.
+- Artist search & detailed info
+- Track search & track info
+- Album search
+- Genre (tag) search
+- Global Top 10 Artists
+- Global Top 10 Tracks
 
-## Files
+The app demonstrates AJAX calls, DOM manipulation, API integration, and responsive UI styling using HTML, CSS, and vanilla JavaScript.
 
-- ```index.html```— main HTML UI.
-- ```styles.css``` — layout and visual styles.
-- ```app.js``` — application logic and API calls.
+## 🚀 Quick Start
 
-#### Path
+### ✔️ Requirements
+
+- A modern browser (Chrome, Firefox, Safari, Edge)
+- Internet connection (API requests are live)
+- No backend server, database, or hosting required
+
+## ▶️ Run the App (MacOS + Windows)
+
+### Option 1: Use VS Code + Live Server (Recommended)
+MacOS + Windows:
+1. Install VS Code
+2. Open the project folder
+3. Install the Live Server extension
+4. Right-click index.html → Open with Live Server
+
+### Option 2 (MacOS): simple Python server
+
+Open Terminal inside the project folder:
+
+Python 3:
+```
+python3 -m http.server 5500
+```
+
+Then open in browser:
+```
+http://localhost:5500
+````
+
+### Option 3 (Windows): PowerShell
+
+Inside project folder:
+```
+python -m http.server 5500
+````
+
+## 📁 Project Structure
 ```
 Project-2-AJAX-Music/
-├── index.html
-├── app.js
-└── styles.css
+│
+├── index.html      → UI layout + search interface
+├── styles.css      → Custom responsive styling
+├── app.js          → AJAX logic + API integration
+└── README.md       → Documentation
 ```
 
-Key functions in the code:
-- `doSearch` — orchestrates searches and renders results.
-- `buildLastFmUrl` — builds request URLs for Last.fm API.
-- `fetchJson` — generic fetch + error handling.
-- `fetchAndShowArtistInfo`, `fetchAndShowTrackInfo`, `fetchAndShowAlbumInfo` — load and render detail views.
+## ✨ Features
 
-(Open the above links to inspect the implementations.)
+### 1. Smart Search System
 
-## Usage notes
+Search by:
+- Artist (name, listeners, playcount, biography)
+- Track (artist + song title info)
+- Album
+- Genre (tag) → returns top artists & top tracks for that tag
 
-- The Last.fm API key is set in [app.js] for convenience. For production repositories avoid committing secrets; use environment variables or a server proxy.
-- The app relies on the Last.fm JSON API (BASE_URL = `https://ws.audioscrobbler.com/2.0/`). Network errors and non-OK HTTP responses are shown in the status area.
+All results are shown in responsive cards.
 
-## Deployment
+### 🧩 2. Global Music Charts
 
-- Static site — can be deployed to GitHub Pages or any static host.
-- Ensure CORS/network access to Last.fm from the deployed origin.
+Loaded automatically when the app starts:
 
-Launch locally from ```Visual Studio Code``` (Windows and macOS)
+🔟 Top 10 Global Artists
+Fetched from ```chart.gettopartists```
 
-- Option A — Live Server (recommended)
-  1. Install the ```Live Server``` extension (Ritwick Dey) in VS Code.
-  2. Open the project folder in VS Code:
-     - macOS / Linux: open Terminal in the project folder and run `code .` (if CLI is installed).
-     - Windows: open the folder in VS Code via File → Open Folder... or use `code .` in Command Prompt / PowerShell.
-  3. Open `index.html` in the editor and click "Go Live" in the status bar or right-click the file → "Open with Live Server".
-  4. The app will open at a local address (e.g. `http://127.0.0.1:5500`) and auto-reload on file changes.
+🔟 Top 10 Global Tracks
+Fetched from ```chart.gettoptracks```
 
-- Option B — VS Code integrated terminal (no extension)
-  1. Open the integrated terminal (View → Terminal or Ctrl+` / Cmd+`).
-  2. Run a simple static server from the project root:
-     - Python 3 (macOS / Linux / Windows with Python installed):
-       - `python3 -m http.server 5500` or on some Windows installs `python -m http.server 5500`
-     - Node (no global install required):
-       - `npx http-server -p 5500`
-  3. Open the URL in your browser:
-     - macOS: `open http://localhost:5500`
-     - Windows (PowerShell): `Start-Process "http://localhost:5500"`
-     - Or manually paste `http://localhost:5500` into the browser address bar.
 
-Tips:
-- Live Server provides the easiest workflow (auto-reload and integrated browser preview).
-- If `code .` is not available, enable the "code" command from VS Code: Command Palette → "Shell Command: Install 'code' command in PATH" (macOS) or use File → Open Folder... (Windows).
-- When deploying to GitHub Pages, push the repository and enable Pages in repository settings.
+### 🔄 3. API Powered
 
-## Troubleshooting
+Uses Last.fm API endpoints:
+```
+- artist.search
+- artist.getinfo
+- track.search
+- track.getInfo
+- album.search
+- tag.gettopartists
+- tag.gettoptracks
+- chart.gettopartists
+- chart.gettoptracks
+```
 
-- If searches return "No results found." or "Error fetching data", check browser console for detailed errors.
-- If API calls fail with HTTP status errors, confirm the API key in ```app.js``` and Last.fm service availability.
+### 🎨 4. UI/UX Improvements
+
+- Responsive grid layout
+- Clean card-based design
+- Muted metadata sections
+- Works on desktop + mobile
+- Clear status messages (loading, errors, empty results)
+
+## 📘 API Documentation (Used by the App)
+
+All API calls follow:
+```
+https://ws.audioscrobbler.com/2.0/?method=...&api_key=YOUR_KEY&format=json
+````
+
+## 🔑 API Key Use
+
+API key is embedded client-side (public), because:
+
+- ✔️ Last.fm API is designed for client-side use
+- ✔️ No sensitive data is exposed
+- ✔️ No POST requests or write operations
+- ✔️ No user accounts or tokens required
+
+## ❌ Why Render is not being used (Backend)
+
+Some APIs require a backend server to hide secret keys — Last.fm does NOT.
+
+You do NOT need Render because:
+- API key is not considered sensitive
+- Only making read-only public GET requests
+- There is no user authentication
+- It is a front-end–only school project
+- No database or server-side logic is required
+
+Using Render would add unnecessary complexity (deploying Node.js, routing, proxying).
+
+➡️ Storing the key in ```.env``` on a backend would not improve security for this specific assignment.
+
+## 🛠️ Troubleshooting
+### ❌ “Error fetching data”
+
+Check:
+- Internet connection
+- Typing mistakes in search
+- Last.fm rate limit (rare)
+
+### ❌ “undefined” in results
+
+Usually means:
+- Artist/track/album not found
+- API returned an empty object
+- Genre/tag may not exist
+
+Try another search term.
+
+### ❌ Nothing loads on startup
+
+Make sure JavaScript is allowed in your browser.
+
+## 🙌 Credits
+
+Data: ```Last.fm API```
+
+Built for: Dynamic Web Applications with JavaScript
 
 #### Stefan Beatović, 2025 - Dynamic Web Applications with Javascript TO00BL10-3028 / Project-2-AJAX

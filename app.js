@@ -1,341 +1,322 @@
-/*
-  app.js
-  Expanded music app using Last.fm:
-  - multi-result search (artist / track / album)
-  - details views via artist.getInfo, track.getInfo, album.getInfo
-  - top tracks / top albums / similar artists
-  - graceful handling of missing fields
-*/
 
 const API_KEY = "f83c0a91d770c95791c7bbdf93dd0055";
 const BASE_URL = "https://ws.audioscrobbler.com/2.0/";
 
 const searchInput = document.getElementById("searchInput");
+const searchType = document.getElementById("searchType");
 const searchBtn = document.getElementById("searchBtn");
 const resultsGrid = document.getElementById("results");
 const statusEl = document.getElementById("status");
-const detailsPanel = document.getElementById("detailsPanel");
+
+const topArtistsEl = document.getElementById("topArtists");
+const topTracksEl = document.getElementById("topTracks");
+
+const detailsOverlay = document.getElementById("detailsOverlay");
 const detailsContent = document.getElementById("detailsContent");
 const closeDetailsBtn = document.getElementById("closeDetails");
 
-// Helper: build URL with method + params
-function buildLastFmUrl(params = {}) {
+// Utility helpers
+const safe = (v, f = "") => (v === undefined || v === null ? f : v);
+function escapeHtml(s){ if (s===undefined||s===null) return ""; return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'", "&#39;"); }
+function stripHtml(html){ if(!html) return ""; return html.replace(/<[^>]*>/g,""); }
+function buildUrl(params = {}){
   params.api_key = API_KEY;
   params.format = "json";
-
-  const query = Object.keys(params)
-    .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
-    .join("&");
-
-  return `${BASE_URL}?${query}`;
+  const q = Object.keys(params).map(k=> `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join("&");
+  return `${BASE_URL}?${q}`;
 }
+async function fetchJson(url){ const r = await fetch(url); if(!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }
+function setStatus(t){ statusEl.textContent = t; } 
+function clearStatus(){ statusEl.textContent = ""; }
+function clearResults(){ resultsGrid.innerHTML = ""; }
 
-// Utility: safe access for nested properties
-const safe = (v, fallback = "") => (v === undefined || v === null ? fallback : v);
-
-// UI Helpers
-function setStatus(text) {
-  statusEl.textContent = text;
-}
-function clearStatus() {
-  statusEl.textContent = "";
-}
-function clearResults() {
-  resultsGrid.innerHTML = "";
-}
-
-// Show details panel
-function openDetails(html) {
+// Modal controls
+function openDetails(html){
   detailsContent.innerHTML = html;
-  detailsPanel.setAttribute("aria-hidden", "false");
+  detailsOverlay.setAttribute("aria-hidden","false");
 }
-function closeDetails() {
-  detailsContent.innerHTML = "";
-  detailsPanel.setAttribute("aria-hidden", "true");
-}
+function closeDetails(){ detailsContent.innerHTML = ""; detailsOverlay.setAttribute("aria-hidden","true"); }
 closeDetailsBtn.addEventListener("click", closeDetails);
+detailsOverlay.addEventListener("click", (e)=>{ if(e.target === detailsOverlay) closeDetails(); });
 
-// ------------------------------
-// Search flow
-// ------------------------------
+// ----------------------
+// Startup: load top charts
+// ----------------------
+window.addEventListener("load", () => {
+  loadTopCharts();
+});
+
+// Top charts
+async function loadTopCharts(){
+  try {
+    topArtistsEl.innerHTML = "<li>Loading...</li>";
+    topTracksEl.innerHTML = "<li>Loading...</li>";
+
+    const [artistsData, tracksData] = await Promise.all([
+      fetchJson(buildUrl({ method: "chart.gettopartists", limit: 10 })),
+      fetchJson(buildUrl({ method: "chart.gettoptracks", limit: 10 }))
+    ]);
+
+    const artists = artistsData?.artists?.artist || [];
+    const tracks = tracksData?.tracks?.track || [];
+
+    topArtistsEl.innerHTML = artists.map((a, i) => {
+      const name = safe(a.name, "Unknown");
+      return `<li><span>${i+1}. ${escapeHtml(name)}</span><button data-action="open-artist" data-artist="${escapeHtml(name)}">Details</button></li>`;
+    }).join("") || "<li>No top artists available.</li>";
+
+    topTracksEl.innerHTML = tracks.map((t,i) => {
+      const title = safe(t.name, "Unknown");
+      const artist = (t.artist && t.artist.name) ? t.artist.name : (t.artist || "");
+      return `<li><span>${i+1}. ${escapeHtml(title)} — ${escapeHtml(artist)}</span><button data-action="open-track" data-artist="${escapeHtml(artist)}" data-track="${escapeHtml(title)}">Details</button></li>`;
+    }).join("") || "<li>No top tracks available.</li>";
+
+    // attach click listeners
+    topArtistsEl.querySelectorAll("button[data-action]").forEach(btn=>{
+      btn.addEventListener("click", ()=> fetchAndShowArtistInfo(btn.dataset.artist));
+    });
+    topTracksEl.querySelectorAll("button[data-action]").forEach(btn=>{
+      btn.addEventListener("click", ()=> fetchAndShowTrackInfo(btn.dataset.artist, btn.dataset.track));
+    });
+
+    clearStatus();
+  } catch(err){
+    console.error("Top charts error:", err);
+    topArtistsEl.innerHTML = "<li>Error loading top artists.</li>";
+    topTracksEl.innerHTML = "<li>Error loading top tracks.</li>";
+    setStatus("Could not load top charts.");
+  }
+}
+
+// ----------------------
+// Event: Search
+// ----------------------
 searchBtn.addEventListener("click", () => {
   const q = searchInput.value.trim();
-  if (!q) {
-    setStatus("Type an artist, track or album to search.");
-    return;
-  }
-  // get selected type
-  const type = document.querySelector('input[name="searchType"]:checked').value;
+  const type = searchType.value;
+  if(!q){ setStatus("Type a search term."); return; }
   doSearch(q, type);
 });
 
-async function doSearch(query, type = "all") {
+// Main search handler
+async function doSearch(q, type="all"){
   setStatus("Searching...");
   clearResults();
-
   try {
-    // run the three searches in parallel (artist/track/album)
-    const promises = [];
-    if (type === "all" || type === "artist") promises.push(searchArtist(query));
-    else promises.push(Promise.resolve(null));
+    const tasks = [];
+    if(type === "all" || type === "artist") tasks.push(searchArtist(q)); else tasks.push(Promise.resolve(null));
+    if(type === "all" || type === "track") tasks.push(searchTrack(q)); else tasks.push(Promise.resolve(null));
+    if(type === "all" || type === "album") tasks.push(searchAlbum(q)); else tasks.push(Promise.resolve(null));
+    if(type === "all" || type === "genre") tasks.push(searchGenre(q)); else tasks.push(Promise.resolve(null));
 
-    if (type === "all" || type === "track") promises.push(searchTrack(query));
-    else promises.push(Promise.resolve(null));
-
-    if (type === "all" || type === "album") promises.push(searchAlbum(query));
-    else promises.push(Promise.resolve(null));
-
-    const [artistData, trackData, albumData] = await Promise.all(promises);
+    const [artistData, trackData, albumData, genreData] = await Promise.all(tasks);
 
     let any = false;
 
-    // render artists (up to 6)
+    // Artists
     const artists = artistData?.results?.artistmatches?.artist || [];
-    if (artists.length) {
+    if(artists.length){
       any = true;
-      const fragment = document.createDocumentFragment();
-      artists.slice(0,6).forEach(a => {
-        fragment.appendChild(createArtistCard(a));
-      });
-      resultsGrid.appendChild(fragment);
+      const frag = document.createDocumentFragment();
+      artists.slice(0,8).forEach(a => frag.appendChild(createArtistCard(a)));
+      resultsGrid.appendChild(frag);
     }
 
-    // render tracks (up to 6)
+    // Tracks
     const tracks = trackData?.results?.trackmatches?.track || [];
-    if (tracks.length) {
+    if(tracks.length){
       any = true;
-      const fragment = document.createDocumentFragment();
-      tracks.slice(0,6).forEach(t => {
-        fragment.appendChild(createTrackCard(t));
-      });
-      resultsGrid.appendChild(fragment);
+      const frag = document.createDocumentFragment();
+      tracks.slice(0,8).forEach(t => frag.appendChild(createTrackCard(t)));
+      resultsGrid.appendChild(frag);
     }
 
-    // render albums (up to 6)
+    // Albums
     const albums = albumData?.results?.albummatches?.album || [];
-    if (albums.length) {
+    if(albums.length){
       any = true;
-      const fragment = document.createDocumentFragment();
-      albums.slice(0,6).forEach(al => {
-        fragment.appendChild(createAlbumCard(al));
+      const frag = document.createDocumentFragment();
+      albums.slice(0,8).forEach(al => frag.appendChild(createAlbumCard(al)));
+      resultsGrid.appendChild(frag);
+    }
+
+    // Genre results (tag-based): tag.gettoptracks + tag.gettopartists combined
+    const genreTracks = genreData?.tracks || [];
+    const genreArtists = genreData?.artists || [];
+    if((genreTracks && genreTracks.length) || (genreArtists && genreArtists.length)){
+      any = true;
+      // render genre section
+      const sec = document.createElement("div");
+      sec.className = "card";
+      sec.innerHTML = `<h3>Genre results for "${escapeHtml(q)}"</h3>`;
+      if(genreArtists && genreArtists.length){
+        const list = genreArtists.slice(0,6).map(a => `<button class="btn-ghost" data-action="open-artist" data-artist="${escapeHtml(a.name)}">${escapeHtml(a.name)}</button>`).join(" ");
+        sec.innerHTML += `<div class="section"><h4>Artists</h4><div class="tag-list">${list}</div></div>`;
+      }
+      if(genreTracks && genreTracks.length){
+        const list = genreTracks.slice(0,8).map(t => `<div style="margin:6px 0;"><button class="btn-ghost" data-action="open-track" data-artist="${escapeHtml(t.artist.name || t.artist)}" data-track="${escapeHtml(t.name)}">${escapeHtml(t.name)}</button> — ${escapeHtml(t.artist.name || t.artist)}</div>`).join("");
+        sec.innerHTML += `<div class="section"><h4>Tracks</h4>${list}</div>`;
+      }
+      resultsGrid.appendChild(sec);
+
+      // attach listeners
+      sec.querySelectorAll("[data-action]").forEach(btn=>{
+        const action = btn.getAttribute("data-action");
+        btn.addEventListener("click", ()=>{
+          if(action === "open-artist") fetchAndShowArtistInfo(btn.getAttribute("data-artist"));
+          if(action === "open-track") fetchAndShowTrackInfo(btn.getAttribute("data-artist"), btn.getAttribute("data-track"));
+        });
       });
-      resultsGrid.appendChild(fragment);
     }
 
-    if (!any) {
-      setStatus("No results found.");
-    } else {
-      clearStatus();
-    }
+    if(!any) setStatus("No results found.");
+    else clearStatus();
 
-  } catch (err) {
+  } catch(err){
     console.error("Search error:", err);
     setStatus("Error fetching data. See console for details.");
   }
 }
 
-// ------------------------------
-// Create result cards
-// ------------------------------
-function createArtistCard(a) {
-  const el = document.createElement("article");
-  el.className = "result-card";
-
-  const imgUrl = (a.image && a.image.length && a.image[a.image.length-1]["#text"]) || "";
+// ----------------------
+// Create cards
+// ----------------------
+function createArtistCard(a){
+  const el = document.createElement("article"); el.className = "result-card";
+  const img = (a.image && a.image.length && a.image[a.image.length-1]["#text"]) || "";
   const name = safe(a.name, "Unknown");
   const listeners = safe(a.listeners, "—");
-
   el.innerHTML = `
-    ${imgUrl ? `<img class="thumb" src="${imgUrl}" alt="${escapeHtml(name)}">` : `<div class="thumb" aria-hidden="true"></div>`}
+    ${img ? `<img class="thumb" src="${img}" alt="${escapeHtml(name)}">` : `<div class="thumb" aria-hidden="true"></div>`}
     <h3>${escapeHtml(name)}</h3>
     <p>Listeners: ${escapeHtml(listeners)}</p>
     <div class="action-row">
-      <button class="btn-ghost" data-action="artist-details" data-artist="${escapeAttr(name)}">Details</button>
-      <button class="btn-ghost" data-action="artist-toptracks" data-artist="${escapeAttr(name)}">Top tracks</button>
+      <button class="btn-ghost" data-action="open-artist" data-artist="${escapeHtml(name)}">Details</button>
+      <button class="btn-ghost" data-action="open-artist-top" data-artist="${escapeHtml(name)}">Top tracks</button>
     </div>
   `;
-
-  // Events (delegated)
-  el.querySelectorAll("button").forEach(btn => {
-    btn.addEventListener("click", (ev) => {
-      const action = btn.getAttribute("data-action");
-      const artistName = btn.getAttribute("data-artist");
-      if (action === "artist-details") fetchAndShowArtistInfo(artistName);
-      if (action === "artist-toptracks") fetchAndShowArtistTopTracks(artistName);
-    });
+  el.querySelectorAll("button[data-action]").forEach(btn=>{
+    const aName = btn.getAttribute("data-artist");
+    if(btn.getAttribute("data-action") === "open-artist") btn.addEventListener("click", ()=> fetchAndShowArtistInfo(aName));
+    if(btn.getAttribute("data-action") === "open-artist-top") btn.addEventListener("click", ()=> fetchAndShowArtistTopTracks(aName));
   });
-
   return el;
 }
-
-function createTrackCard(t) {
-  const el = document.createElement("article");
-  el.className = "result-card";
-
-  const imgUrl = (t.image && t.image.length && t.image[t.image.length-1]["#text"]) || "";
+function createTrackCard(t){
+  const el = document.createElement("article"); el.className = "result-card";
+  const img = (t.image && t.image.length && t.image[t.image.length-1]["#text"]) || "";
   const name = safe(t.name, "Unknown");
-  const artist = safe(t.artist, "Unknown");
-
+  const artist = (t.artist && t.artist.name) ? t.artist.name : (t.artist || "");
   el.innerHTML = `
-    ${imgUrl ? `<img class="thumb" src="${imgUrl}" alt="${escapeHtml(name)}">` : `<div class="thumb" aria-hidden="true"></div>`}
+    ${img ? `<img class="thumb" src="${img}" alt="${escapeHtml(name)}">` : `<div class="thumb" aria-hidden="true"></div>`}
     <h3>${escapeHtml(name)}</h3>
     <p>Artist: ${escapeHtml(artist)}</p>
     <div class="action-row">
-      <button class="btn-ghost" data-action="track-details" data-artist="${escapeAttr(artist)}" data-track="${escapeAttr(name)}">Details</button>
+      <button class="btn-ghost" data-action="open-track" data-artist="${escapeHtml(artist)}" data-track="${escapeHtml(name)}">Details</button>
     </div>
   `;
-
-  el.querySelector("button").addEventListener("click", () => {
-    fetchAndShowTrackInfo(artist, name);
-  });
-
+  el.querySelector("button").addEventListener("click", ()=> fetchAndShowTrackInfo(artist, name));
   return el;
 }
-
-function createAlbumCard(al) {
-  const el = document.createElement("article");
-  el.className = "result-card";
-
-  const imgUrl = (al.image && al.image.length && al.image[al.image.length-1]["#text"]) || "";
+function createAlbumCard(al){
+  const el = document.createElement("article"); el.className = "result-card";
+  const img = (al.image && al.image.length && al.image[al.image.length-1]["#text"]) || "";
   const name = safe(al.name, "Unknown");
   const artist = safe(al.artist, "Unknown");
-
   el.innerHTML = `
-    ${imgUrl ? `<img class="thumb" src="${imgUrl}" alt="${escapeHtml(name)}">` : `<div class="thumb" aria-hidden="true"></div>`}
+    ${img ? `<img class="thumb" src="${img}" alt="${escapeHtml(name)}">` : `<div class="thumb" aria-hidden="true"></div>`}
     <h3>${escapeHtml(name)}</h3>
     <p>Artist: ${escapeHtml(artist)}</p>
     <div class="action-row">
-      <button class="btn-ghost" data-action="album-details" data-artist="${escapeAttr(artist)}" data-album="${escapeAttr(name)}">Details</button>
+      <button class="btn-ghost" data-action="open-album" data-artist="${escapeHtml(artist)}" data-album="${escapeHtml(name)}">Details</button>
     </div>
   `;
-
-  el.querySelector("button").addEventListener("click", () => {
-    fetchAndShowAlbumInfo(artist, name);
-  });
-
+  el.querySelector("button").addEventListener("click", ()=> fetchAndShowAlbumInfo(artist, name));
   return el;
 }
 
-// ------------------------------
-// Fetch helper functions
-// ------------------------------
-async function searchArtist(q) {
-  const url = buildLastFmUrl({ method: "artist.search", artist: q });
-  return fetchJson(url);
-}
-async function searchTrack(q) {
-  const url = buildLastFmUrl({ method: "track.search", track: q });
-  return fetchJson(url);
-}
-async function searchAlbum(q) {
-  const url = buildLastFmUrl({ method: "album.search", album: q });
-  return fetchJson(url);
-}
-
-async function fetchArtistInfo(artistName) {
-  const url = buildLastFmUrl({ method: "artist.getinfo", artist: artistName, autocorrect: 1 });
-  return fetchJson(url);
-}
-async function fetchTrackInfo(artistName, trackName) {
-  const url = buildLastFmUrl({ method: "track.getInfo", artist: artistName, track: trackName, autocorrect: 1 });
-  return fetchJson(url);
-}
-async function fetchAlbumInfo(artistName, albumName) {
-  const url = buildLastFmUrl({ method: "album.getInfo", artist: artistName, album: albumName, autocorrect: 1 });
-  return fetchJson(url);
-}
-async function fetchArtistTopTracks(artistName, limit = 10) {
-  const url = buildLastFmUrl({ method: "artist.getTopTracks", artist: artistName, limit });
-  return fetchJson(url);
-}
-async function fetchArtistTopAlbums(artistName, limit = 8) {
-  const url = buildLastFmUrl({ method: "artist.getTopAlbums", artist: artistName, limit });
-  return fetchJson(url);
-}
-async function fetchArtistSimilar(artistName, limit = 8) {
-  const url = buildLastFmUrl({ method: "artist.getSimilar", artist: artistName, limit });
-  return fetchJson(url);
-}
-
-// Generic JSON fetch with error handling
-async function fetchJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-// ------------------------------
-// Detail views
-// ------------------------------
-async function fetchAndShowArtistInfo(artistName) {
+// ----------------------
+// Low-level search functions
+// ----------------------
+async function searchArtist(q){ return fetchJson(buildUrl({ method: "artist.search", artist: q, limit: 12 })); }
+async function searchTrack(q){ return fetchJson(buildUrl({ method: "track.search", track: q, limit: 12 })); }
+async function searchAlbum(q){ return fetchJson(buildUrl({ method: "album.search", album: q, limit: 12 })); }
+// genre combined: tag.gettoptracks + tag.gettopartists
+async function searchGenre(q){
   try {
-    setStatus("Loading artist info...");
+    const [tracksData, artistsData] = await Promise.all([
+      fetchJson(buildUrl({ method: "tag.gettoptracks", tag: q, limit: 12 })),
+      fetchJson(buildUrl({ method: "tag.gettopartists", tag: q, limit: 12 }))
+    ]);
+    return { tracks: tracksData?.toptracks?.track || [], artists: artistsData?.topartists?.artist || [] };
+  } catch(err){
+    console.error("Genre search error:", err);
+    return { tracks: [], artists: [] };
+  }
+}
+
+// ----------------------
+// Detail fetchers & views
+// ----------------------
+async function fetchArtistInfo(artistName){ return fetchJson(buildUrl({ method: "artist.getinfo", artist: artistName, autocorrect: 1 })); }
+async function fetchTrackInfo(artistName, trackName){ return fetchJson(buildUrl({ method: "track.getInfo", artist: artistName, track: trackName, autocorrect: 1 })); }
+async function fetchAlbumInfo(artistName, albumName){ return fetchJson(buildUrl({ method: "album.getInfo", artist: artistName, album: albumName, autocorrect: 1 })); }
+async function fetchArtistTopTracks(artistName, limit=15){ return fetchJson(buildUrl({ method: "artist.getTopTracks", artist: artistName, limit })); }
+
+async function fetchAndShowArtistInfo(artistName){
+  try {
+    setStatus("Loading artist details...");
     const [info, topTracks, topAlbums, similar] = await Promise.all([
       fetchArtistInfo(artistName),
-      fetchArtistTopTracks(artistName, 8),
-      fetchArtistTopAlbums(artistName, 8),
-      fetchArtistSimilar(artistName, 8)
+      fetchArtistTopTracks(artistName, 10).catch(()=>({ toptracks:{ track: [] } })),
+      fetchJson(buildUrl({ method: "artist.getTopAlbums", artist: artistName, limit: 8 })).catch(()=>({ toppalbums:{ album: [] } })),
+      fetchJson(buildUrl({ method: "artist.getSimilar", artist: artistName, limit: 8 })).catch(()=>({ similarartists:{ artist: [] } }))
     ]);
 
     const art = info?.artist;
-    if (!art) {
-      setStatus("Artist details not available.");
-      return;
-    }
+    if(!art){ setStatus("Artist details not available."); return; }
 
-    // gather images (choose largest available)
     const img = (art.image && art.image.length && art.image[art.image.length-1]["#text"]) || "";
-
-    const bio = (art.bio && art.bio.summary) ? stripHtml(art.bio.summary) : "No biography available.";
+    const bio = art.bio?.summary ? stripHtml(art.bio.summary) : "";
     const tags = art.tags?.tag || [];
-
-    const topTracksArr = topTracks?.toptracks?.track || [];
-    const topAlbumsArr = topAlbums?.topalbums?.album || [];
+    const topArr = topTracks?.toptracks?.track || [];
+    const albumsArr = (await fetchJson(buildUrl({ method: "artist.getTopAlbums", artist: artistName, limit: 8 }))).topalbums?.album || [];
     const similarArr = similar?.similarartists?.artist || [];
 
-    // build html
     let html = `
       <div class="details-hero">
-        ${img ? `<img src="${img}" alt="${escapeHtml(art.name)}">` : `<div style="width:110px;height:110px;border-radius:8px;background:#f1f5f9"></div>`}
+        ${img ? `<img src="${img}" alt="${escapeHtml(art.name)}">` : `<div style="width:120px;height:120px;border-radius:8px;background:#f1f5f9"></div>`}
         <div>
-          <h2>${escapeHtml(art.name)}</h2>
+          <h2 id="detailsTitle">${escapeHtml(art.name)}</h2>
           <div class="details-meta">Listeners: ${escapeHtml(art.stats?.listeners || "—")} • Playcount: ${escapeHtml(art.stats?.playcount || "—")}</div>
-          <div class="section tag-list" style="margin-top:8px">
-            ${tags.slice(0,6).map(t => `<span class="tag">${escapeHtml(t.name)}</span>`).join("")}
-          </div>
+          <div class="section tag-list">${tags.slice(0,6).map(t=>`<span class="tag">${escapeHtml(t.name)}</span>`).join("")}</div>
         </div>
       </div>
-
-      <div class="section">
-        <h4>Biography</h4>
-        <div>${escapeHtml(bio)}</div>
-      </div>
+      <div class="section"><h4>Biography</h4><div>${escapeHtml(bio || "No biography available.")}</div></div>
     `;
 
-    if (topTracksArr.length) {
+    if(topArr.length){
       html += `<div class="section"><h4>Top tracks</h4><ol>`;
-      topTracksArr.slice(0,8).forEach(tr => {
-        const tname = tr.name || "";
-        const tart = tr.artist?.name || artistName;
-        html += `<li><button class="btn-ghost" data-action="open-track" data-artist="${escapeAttr(tart)}" data-track="${escapeAttr(tname)}">${escapeHtml(tname)}</button></li>`;
+      topArr.slice(0,10).forEach(tr => {
+        const tname = tr.name || ""; const tart = tr.artist?.name || artistName;
+        html += `<li><button class="btn-ghost" data-action="open-track" data-artist="${escapeHtml(tart)}" data-track="${escapeHtml(tname)}">${escapeHtml(tname)}</button></li>`;
       });
       html += `</ol></div>`;
     }
 
-    if (topAlbumsArr.length) {
+    if(albumsArr.length){
       html += `<div class="section"><h4>Top albums</h4><div class="tag-list">`;
-      topAlbumsArr.slice(0,8).forEach(al => {
-        const aname = al.name || "";
-        const aartist = al.artist?.name || artistName;
-        html += `<button class="tag btn-ghost" data-action="open-album" data-artist="${escapeAttr(aartist)}" data-album="${escapeAttr(aname)}">${escapeHtml(aname)}</button>`;
+      albumsArr.slice(0,8).forEach(al => {
+        const aname = al.name || ""; const aartist = al.artist?.name || artistName;
+        html += `<button class="tag btn-ghost" data-action="open-album" data-artist="${escapeHtml(aartist)}" data-album="${escapeHtml(aname)}">${escapeHtml(aname)}</button>`;
       });
       html += `</div></div>`;
     }
 
-    if (similarArr.length) {
+    if(similarArr.length){
       html += `<div class="section"><h4>Similar artists</h4><div class="tag-list">`;
       similarArr.slice(0,8).forEach(s => {
-        html += `<button class="tag btn-ghost" data-action="open-artist" data-artist="${escapeAttr(s.name)}">${escapeHtml(s.name)}</button>`;
+        html += `<button class="tag btn-ghost" data-action="open-artist" data-artist="${escapeHtml(s.name)}">${escapeHtml(s.name)}</button>`;
       });
       html += `</div></div>`;
     }
@@ -343,191 +324,137 @@ async function fetchAndShowArtistInfo(artistName) {
     openDetails(html);
     clearStatus();
 
-    // delegate clicks inside details panel (track / album / artist buttons)
-    detailsContent.querySelectorAll("[data-action]").forEach(btn => {
-      btn.addEventListener("click", (ev) => {
-        const action = btn.getAttribute("data-action");
-        if (action === "open-track") {
-          const artist = btn.getAttribute("data-artist");
-          const track = btn.getAttribute("data-track");
-          fetchAndShowTrackInfo(artist, track);
-        } else if (action === "open-album") {
-          fetchAndShowAlbumInfo(btn.getAttribute("data-artist"), btn.getAttribute("data-album"));
-        } else if (action === "open-artist") {
-          fetchAndShowArtistInfo(btn.getAttribute("data-artist"));
-        }
+    // Delegated bindings inside details
+    detailsContent.querySelectorAll("[data-action]").forEach(btn=>{
+      const action = btn.getAttribute("data-action");
+      btn.addEventListener("click", ()=>{
+        if(action === "open-track") fetchAndShowTrackInfo(btn.getAttribute("data-artist"), btn.getAttribute("data-track"));
+        if(action === "open-album") fetchAndShowAlbumInfo(btn.getAttribute("data-artist"), btn.getAttribute("data-album"));
+        if(action === "open-artist") fetchAndShowArtistInfo(btn.getAttribute("data-artist"));
       });
     });
 
-  } catch (err) {
-    console.error("Artist info error:", err);
+  } catch(err){
+    console.error("Artist detail error:", err);
     setStatus("Could not load artist details.");
   }
 }
 
-async function fetchAndShowTrackInfo(artistName, trackName) {
+async function fetchAndShowTrackInfo(artistName, trackName){
   try {
-    setStatus("Loading track info...");
+    setStatus("Loading track details...");
     const data = await fetchTrackInfo(artistName, trackName);
-
     const tr = data?.track;
-    if (!tr) {
-      setStatus("Track details not available.");
-      return;
-    }
+    if(!tr){ setStatus("Track details not available."); return; }
 
     const img = (tr.album?.image && tr.album.image.length && tr.album.image[tr.album.image.length-1]["#text"]) || "";
     const durationMs = parseInt(tr.duration || 0, 10);
-    const duration = durationMs ? msToTime(durationMs) : (tr.duration ? tr.duration + "ms" : "—");
+    const duration = durationMs ? msToTime(durationMs) : "—";
+    const albumName = tr.album?.title || "—";
     const listeners = tr.listeners || "—";
     const playcount = tr.playcount || "—";
-    const albumName = tr.album?.title || "—";
-    const artist = tr.artist?.name || artistName;
 
     let html = `
       <div class="details-hero">
-        ${img ? `<img src="${img}" alt="${escapeHtml(tr.name)}">` : `<div style="width:110px;height:110px;border-radius:8px;background:#f1f5f9"></div>`}
+        ${img ? `<img src="${img}" alt="${escapeHtml(tr.name)}">` : `<div style="width:120px;height:120px;border-radius:8px;background:#f1f5f9"></div>`}
         <div>
-          <h2>${escapeHtml(tr.name)}</h2>
-          <div class="details-meta">Artist: ${escapeHtml(artist)}</div>
-          <div class="details-meta">Album: ${escapeHtml(albumName)}</div>
-          <div class="details-meta">Duration: ${escapeHtml(duration)} • Listeners: ${escapeHtml(listeners)}</div>
+          <h2 id="detailsTitle">${escapeHtml(tr.name)}</h2>
+          <div class="details-meta">Artist: ${escapeHtml(tr.artist?.name || artistName)} • Album: ${escapeHtml(albumName)}</div>
+          <div class="details-meta">Duration: ${escapeHtml(duration)} • Listeners: ${escapeHtml(listeners)} • Playcount: ${escapeHtml(playcount)}</div>
         </div>
       </div>
     `;
-
-    if (tr.toptags?.tag?.length) {
-      html += `<div class="section"><h4>Tags</h4><div class="tag-list">${tr.toptags.tag.map(t => `<span class="tag">${escapeHtml(t.name)}</span>`).join("")}</div></div>`;
+    if(tr.toptags?.tag?.length){
+      html += `<div class="section"><h4>Tags</h4><div class="tag-list">${tr.toptags.tag.map(t=>`<span class="tag">${escapeHtml(t.name)}</span>`).join("")}</div></div>`;
     }
-
-    if (tr.wiki?.summary) {
+    if(tr.wiki?.summary){
       html += `<div class="section"><h4>About this track</h4><div>${escapeHtml(stripHtml(tr.wiki.summary))}</div></div>`;
     }
 
     openDetails(html);
     clearStatus();
 
-  } catch (err) {
-    console.error("Track info error:", err);
+  } catch(err){
+    console.error("Track detail error:", err);
     setStatus("Could not load track details.");
   }
 }
 
-async function fetchAndShowAlbumInfo(artistName, albumName) {
+async function fetchAndShowAlbumInfo(artistName, albumName){
   try {
-    setStatus("Loading album info...");
+    setStatus("Loading album details...");
     const data = await fetchAlbumInfo(artistName, albumName);
-
     const al = data?.album;
-    if (!al) {
-      setStatus("Album details not available.");
-      return;
-    }
+    if(!al){ setStatus("Album details not available."); return; }
 
     const img = (al.image && al.image.length && al.image[al.image.length-1]["#text"]) || "";
-    const listeners = al.listeners || "—";
     const tracksArr = al.tracks?.track || [];
-    const wikiSummary = al.wiki?.summary ? stripHtml(al.wiki.summary) : "";
+    const wiki = al.wiki?.summary ? stripHtml(al.wiki.summary) : "";
 
     let html = `
       <div class="details-hero">
-        ${img ? `<img src="${img}" alt="${escapeHtml(al.name)}">` : `<div style="width:110px;height:110px;border-radius:8px;background:#f1f5f9"></div>`}
+        ${img ? `<img src="${img}" alt="${escapeHtml(al.name)}">` : `<div style="width:120px;height:120px;border-radius:8px;background:#f1f5f9"></div>`}
         <div>
-          <h2>${escapeHtml(al.name)}</h2>
+          <h2 id="detailsTitle">${escapeHtml(al.name)}</h2>
           <div class="details-meta">Artist: ${escapeHtml(al.artist)}</div>
-          <div class="details-meta">Listeners: ${escapeHtml(listeners)}</div>
+          <div class="details-meta">Listeners: ${escapeHtml(al.listeners || "—")}</div>
         </div>
       </div>
     `;
-
-    if (tracksArr.length) {
+    if(tracksArr.length){
       html += `<div class="section"><h4>Tracks</h4><ol>`;
       tracksArr.forEach(t => {
         const tname = t.name || "";
-        const tart = al.artist || artistName;
-        html += `<li><button class="btn-ghost" data-action="open-track" data-artist="${escapeAttr(tart)}" data-track="${escapeAttr(tname)}">${escapeHtml(tname)}</button></li>`;
+        html += `<li><button class="btn-ghost" data-action="open-track" data-artist="${escapeHtml(al.artist)}" data-track="${escapeHtml(tname)}">${escapeHtml(tname)}</button></li>`;
       });
       html += `</ol></div>`;
     }
-
-    if (wikiSummary) {
-      html += `<div class="section"><h4>Album notes</h4><div>${escapeHtml(wikiSummary)}</div></div>`;
-    }
+    if(wiki) html += `<div class="section"><h4>Album notes</h4><div>${escapeHtml(wiki)}</div></div>`;
 
     openDetails(html);
     clearStatus();
 
-    detailsContent.querySelectorAll("[data-action]").forEach(btn => {
-      btn.addEventListener("click", (ev) => {
-        const action = btn.getAttribute("data-action");
-        if (action === "open-track") {
-          const artist = btn.getAttribute("data-artist");
-          const track = btn.getAttribute("data-track");
-          fetchAndShowTrackInfo(artist, track);
+    detailsContent.querySelectorAll("[data-action]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        if(btn.getAttribute("data-action") === "open-track"){
+          fetchAndShowTrackInfo(btn.getAttribute("data-artist"), btn.getAttribute("data-track"));
         }
       });
     });
 
-  } catch (err) {
-    console.error("Album info error:", err);
+  } catch(err){
+    console.error("Album detail error:", err);
     setStatus("Could not load album details.");
   }
 }
 
-// convenience wrappers for quickly loading top tracks view
-async function fetchAndShowArtistTopTracks(artistName) {
+// fetch info wrappers
+async function fetchTrackInfo(artistName, trackName){ return fetchJson(buildUrl({ method: "track.getInfo", artist: artistName, track: trackName, autocorrect: 1 })); }
+async function fetchArtistInfo(artistName){ return fetchJson(buildUrl({ method: "artist.getinfo", artist: artistName, autocorrect: 1 })); }
+async function fetchAlbumInfo(artistName, albumName){ return fetchJson(buildUrl({ method: "album.getInfo", artist: artistName, album: albumName, autocorrect: 1 })); }
+async function msToTime(ms){ if(!ms || isNaN(ms) || ms <= 0) return "—"; const total = Math.floor(ms/1000); const m = Math.floor(total/60); const s = total%60; return `${m}:${String(s).padStart(2,"0")}`; }
+
+// convenience: top tracks view for an artist
+async function fetchAndShowArtistTopTracks(artistName){
   try {
     setStatus("Loading top tracks...");
-    const topTracks = await fetchArtistTopTracks(artistName, 20);
-    const arr = topTracks?.toptracks?.track || [];
-    if (!arr.length) {
-      setStatus("No top tracks available.");
-      return;
-    }
-    let html = `<h2>${escapeHtml(artistName)} — Top tracks</h2><ol>`;
+    const data = await fetchJson(buildUrl({ method: "artist.getTopTracks", artist: artistName, limit: 20 }));
+    const arr = data?.toptracks?.track || [];
+    if(!arr.length){ setStatus("No top tracks available."); return; }
+    let html = `<h2 id="detailsTitle">${escapeHtml(artistName)} — Top tracks</h2><ol>`;
     arr.slice(0,20).forEach(tr => {
       const tname = tr.name || "";
       const tart = tr.artist?.name || artistName;
-      html += `<li><button class="btn-ghost" data-action="open-track" data-artist="${escapeAttr(tart)}" data-track="${escapeAttr(tname)}">${escapeHtml(tname)}</button></li>`;
+      html += `<li><button class="btn-ghost" data-action="open-track" data-artist="${escapeHtml(tart)}" data-track="${escapeHtml(tname)}">${escapeHtml(tname)}</button></li>`;
     });
     html += `</ol>`;
     openDetails(html);
     clearStatus();
-    detailsContent.querySelectorAll("[data-action]").forEach(btn => {
-      btn.addEventListener("click", (ev) => {
-        const artist = btn.getAttribute("data-artist");
-        const track = btn.getAttribute("data-track");
-        fetchAndShowTrackInfo(artist, track);
-      });
+    detailsContent.querySelectorAll("[data-action]").forEach(btn=>{
+      btn.addEventListener("click", ()=> fetchAndShowTrackInfo(btn.getAttribute("data-artist"), btn.getAttribute("data-track")));
     });
-
-  } catch (err) {
+  } catch(err){
     console.error("Top tracks error:", err);
     setStatus("Could not load top tracks.");
   }
-}
-
-// ------------------------------
-// Utilities
-// ------------------------------
-function escapeHtml(s) {
-  if (s === undefined || s === null) return "";
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-function escapeAttr(s) { return escapeHtml(s).replaceAll('"', "&quot;"); }
-function stripHtml(html) {
-  if (!html) return "";
-  return html.replace(/<[^>]*>/g, "");
-}
-function msToTime(ms){
-  if (!ms || isNaN(ms) || ms <= 0) return "—";
-  const total = Math.floor(ms / 1000);
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${minutes}:${String(seconds).padStart(2,"0")}`;
 }
