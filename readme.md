@@ -21,13 +21,13 @@ The app demonstrates AJAX calls, DOM manipulation, API integration, and responsi
 
 ## 🚀 Quick Start
 
-### ✔️ Requirements
+### Requirements
 
 - A modern browser (Chrome, Firefox, Safari, Edge)
 - Internet connection (API requests are live)
 - No backend server, database, or hosting required
 
-## ▶️ Run the App (MacOS + Windows)
+## Run the App (MacOS + Windows)
 
 ### Option 1: Use VS Code + Live Server (Recommended)
 MacOS + Windows:
@@ -67,7 +67,7 @@ Project-2-AJAX-Music/
 └── README.md       → Documentation
 ```
 
-## ✨ Features
+## Features
 
 ### 1. Smart Search System
 
@@ -79,7 +79,7 @@ Search by:
 
 All results are shown in responsive cards.
 
-### 🧩 2. Global Music Charts
+### 2. Global Music Charts
 
 Loaded automatically when the app starts:
 
@@ -90,7 +90,7 @@ Fetched from ```chart.gettopartists```
 Fetched from ```chart.gettoptracks```
 
 
-### 🔄 3. API Powered
+### 3. API Powered
 
 Uses Last.fm API endpoints:
 ```
@@ -105,7 +105,7 @@ Uses Last.fm API endpoints:
 - chart.gettoptracks
 ```
 
-### 🎨 4. UI/UX Improvements
+### 4. UI/UX Improvements
 
 - Responsive grid layout
 - Clean card-based design
@@ -165,7 +165,7 @@ Try another search term.
 
 Make sure JavaScript is allowed in your browser.
 
-## 🙌 Credits
+## Credits
 
 Data: ```Last.fm API```
 
