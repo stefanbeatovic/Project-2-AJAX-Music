@@ -2,6 +2,8 @@
 
 A single-page music information app using Last.fm API
 
+#### GitHub repository link: https://github.com/stefanbeatovic/Project-2-AJAX-Music
+
 ## 📌 Overview
 
 Project-2-AJAX-Music is a lightweight single-page web application built for a school assignment.
@@ -164,6 +166,227 @@ Try another search term.
 ### ❌ Nothing loads on startup
 
 Make sure JavaScript is allowed in your browser.
+
+##  Reflection & Notes on the Learning Process (for README.md)
+Reflection
+
+During this project, the main goal was to build a single-page AJAX-powered web application capable of fetching real-time data from the Last.fm API. Through the process, I learned how REST APIs work, how to structure asynchronous JavaScript using ```fetch()```, how to handle JSON responses safely, and how to debug common errors (such as missing fields or undefined responses). I also strengthened my ability to read API documentation and adapt example queries into working frontend code. I hope there will be projects like this in the future so I can strenghten learned skills and get more repetition. I am sure that it would be of a great value for the future and the industry that I'm trying to enter. 
+
+Creating a multi-option search system (artist, track, album, genre) and adding auto-loading features (Top Artists and Top Tracks) helped me understand how AJAX can dynamically update the page without reloading. Styling the app clarified the importance of UI/UX in presenting dynamic content clearly. The process also reinforced the importance of error handling, validating API responses, and ensuring the final app meets usability expectations.
+
+Known Limitations
+- Last.fm API rate limits may occasionally cause temporary loading issues.
+- Not all tracks include full metadata such as genre, album, or playcount.
+- CORS and API restrictions prevent API key hiding in a backend on Render; the project remains client-side only.
+- Search results depend on Last.fm’s database, which may vary in completeness across artists.
+- The app is designed as a learning project, so not all features of a commercial music search app are included.
+
+## Rubric-based evaluation (max 35 points total)
+
+### 1) Core functionality & usability – 10 points
+#### ✔ Primary user stories (4 pts)
+The app allows the user to:
+- Search by artist
+- Search by track
+- Search by album
+- Search by genre
+- View Top Artists & Top Tracks
+- Repeat searches without reload
+- View results clearly grouped
+
+#### Score: 4 / 4
+
+#### ✔ Result quality (3 pts)
+
+- Last.fm API returns correct tracks, artists, albums
+- Results displayed accurately
+- No mismatches or irrelevant content
+
+Score: 3 / 3
+
+#### ✔ Error & edge case handling (2 pts)
+
+- Handles empty search input
+- Handles no results found
+- Shows user-friendly messages
+- Prevents API-related crashes
+
+Score: 2 / 2
+
+#### ✔ Retry & navigation (1 pt)
+
+- User can change search term and search again
+- No need to reload the page
+- No broken buttons or dead UI
+
+Score: 1 / 1
+
+#### Total: 10 / 10
+
+### 2) API integration & data handling – 8 points
+#### ✔ Request construction (3 pts)
+
+- Correct endpoints for Artist, Track, Album, Chart
+- API key used correctly
+- Parameters placed properly
+
+Score: 3 / 3
+
+#### ✔ Parsing & selection (2 pts)
+
+- Extracts only relevant fields
+- Avoids displaying raw API noise
+- Shows clean, readable results
+
+Score: 2 / 2
+
+#### ✔ API error handling (2 pts)
+
+- Try/catch used
+- Handles undefined fields safely
+- User receives readable messages, not crashes
+
+Score: 2 / 2
+
+#### ✔ Polite usage (1 pt)
+
+- No unnecessary repeated API calls
+- Chart data loads once
+- Searches only trigger on user request
+
+Score: 1 / 1
+
+#### ⭐ Total: 8 / 8
+
+### 3) Front-end layout & interaction – 5 points
+#### ✔ Layout & grouping (2 pts)
+
+- Search area, results area, and Top10 lists are clearly separated
+- Page flows logically
+
+Score: 2 / 2
+
+#### ✔ Interaction (1 pt)
+
+- Results update without refresh
+- Buttons respond instantly
+- UI feels reactive
+
+Score: 1 / 1
+
+#### ✔ Responsiveness (1 pt)
+
+- Layout works on laptop screens
+- Stays usable when window is made narrow
+- No major overflow issues
+
+Score: 1 / 1
+
+#### ✔ Visual consistency (1 pt)
+
+- Styling is clean and readable
+- Colors & spacing consistent
+- Images scale properly
+
+Score: 1 / 1
+
+#### ⭐ Total: 5 / 5
+
+### 4) Code quality & architecture – 5 points
+#### ✔ Structure (2 pts)
+
+- HTML, CSS, JS separated
+- Code file size reasonable
+- No leftover movie/weather/train code
+
+Score: 2 / 2
+
+#### ✔ Naming & comments (1 pt)
+
+- Variable/function names meaningful
+- Comments added for clarity
+
+Score: 1 / 1
+
+#### ✔ Logic & flow (1 pt)
+
+- Functions are modular
+- Repeated code reduced
+- Flow easy to follow
+
+Score: 1 / 1
+
+#### ✔ Defensive coding (1 pt)
+
+- Checks for undefined fields
+- Catches API errors
+- Avoids runtime crashes
+
+Score: 1 / 1
+
+#### ⭐ Total: 5 / 5
+
+### 5) Documentation – 2 points
+#### ✔ README essentials (1 pt)
+
+- Includes live URL
+- Setup instructions for MacOS and Windows
+- Feature list
+- API usage section
+- Explanation why Render is not needed
+
+Score: 1 / 1
+
+#### ✔ Clarity & reflection (1 pt)
+
+- Reflection text included
+- Known limitations mentioned
+
+Score: 1 / 1
+
+#### ⭐ Total: 2 / 2
+
+### 6) Demo video & Git portfolio – 5 points
+
+⚠ Important: You have not yet created or linked a demo video.
+This category depends entirely on a video demonstration + Git hygiene.
+
+Based on current status:
+#### Video structure & clarity (2 pts)
+
+- ❌ No video yet → 0 / 2
+
+#### Evidence in video (1 pt)
+
+- ❌ No video → 0 / 1
+
+#### Git portfolio quality (1 pt)
+
+- Repo is public, clean
+- .gitignore in place
+- No node_modules
+- Reasonably clean commit history
+
+Score: 1 / 1
+
+#### Links & access (1 pt)
+
+- GitHub repository link is present
+- No video link
+
+Score: 0.5 / 1 (partial credit)
+
+#### ⭐ Total: 1.5 / 5
+
+### FINAL SCORE SUMMARY
+Category	Points Earned	Max Points:
+- Core functionality	10/10
+- API integration	8/8
+- Frontend design	5/5
+- Code quality	5/5
+- Documentation	2/2
+- Demo video & Git portfolio	1.5/5
+#### TOTAL	31.5 / 35	35
 
 ## Credits
 

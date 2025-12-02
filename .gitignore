@@ -1,0 +1,21 @@
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# VS Code settings folder
+.vscode/
+
+# Logs
+*.log
+
+# Environment files (if added later)
+.env
+.env.*
+
+# Node modules (if you ever add npm or tooling later)
+node_modules/
+
+# Build directories (if added later)
+dist/
+build/
