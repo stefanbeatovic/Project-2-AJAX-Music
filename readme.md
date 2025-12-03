@@ -3,6 +3,7 @@
 A single-page music information app using Last.fm API
 
 #### GitHub repository link: https://github.com/stefanbeatovic/Project-2-AJAX-Music
+#### GitHub Live URL: https://stefanbeatovic.github.io/Project-2-AJAX-Music/
 
 ## 📌 Overview
 
