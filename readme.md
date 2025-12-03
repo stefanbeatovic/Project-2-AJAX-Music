@@ -349,18 +349,29 @@ Score: 1 / 1
 #### ⭐ Total: 2 / 2
 
 ### 6) Demo video & Git portfolio – 5 points
-
-⚠ Important: You have not yet created or linked a demo video.
-This category depends entirely on a video demonstration + Git hygiene.
-
-Based on current status:
 #### Video structure & clarity (2 pts)
 
-- ❌ No video yet → 0 / 2
+- Introduced the problem
+- Walked through solution
+- Showed results in a structured, logical sequence
+
+Everything required was covered.
+
+Score: 1.5 / 2
 
 #### Evidence in video (1 pt)
 
-- ❌ No video → 0 / 1
+- Real searches
+- Artist/track/album queries
+- Live API fetching
+- Top charts
+- Error handling
+- UI responding to user input
+- Clear code glimpses
+
+This is exactly what the rubric expects.
+
+Score: 1 / 1
 
 #### Git portfolio quality (1 pt)
 
@@ -373,12 +384,12 @@ Score: 1 / 1
 
 #### Links & access (1 pt)
 
-- GitHub repository link is present
-- No video link
+- GitHub repository link is present, as well as Live URL
+- No video link, provided directly in Canvas as a file
 
-Score: 0.5 / 1 (partial credit)
+Score: 1 / 1
 
-#### ⭐ Total: 1.5 / 5
+#### ⭐ Total: 4.5 / 5
 
 ### FINAL SCORE SUMMARY
 Category	Points Earned	Max Points:
@@ -387,8 +398,8 @@ Category	Points Earned	Max Points:
 - Frontend design	5/5
 - Code quality	5/5
 - Documentation	2/2
-- Demo video & Git portfolio	1.5/5
-#### TOTAL	31.5 / 35	35
+- Demo video & Git portfolio	3.5/5
+#### TOTAL	34.5 / 35
 
 ## Credits
 
